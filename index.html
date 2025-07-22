@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Audio Player</title>
+    <style>
+        body {
+            background-color: white;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: black;
+        }
+        #album-cover {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border: 1px solid #ccc;
+        }
+        #player-container {
+            margin-top: 180px;
+            text-align: center;
+        }
+        #track-list {
+            list-style: none;
+            padding: 0;
+        }
+        #track-list li {
+            cursor: pointer;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        #track-list li:hover {
+            background-color: #ddd;
+        }
+        #audio-player {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 400px;
+        }
+        #admin-login, #admin-panel {
+            margin-top: 40px;
+            border: 1px solid #ccc;
+            padding: 20px;
+            max-width: 400px;
+            margin: 40px auto;
+        }
+        input, button {
+            display: block;
+            margin: 10px 0;
+            width: 100%;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <img id="album-cover" src="" alt="Album Cover" class="hidden">
+
+    <div id="player-container">
+        <h1>Audio Player</h1>
+        <ul id="track-list"></ul>
+        <audio id="audio-player" controls></audio>
+    </div>
+
+    <div id="admin-login">
+        <h2>Admin Login</h2>
+        <input type="email" id="admin-email" placeholder="Email" value="admin@example.com">
+        <input type="password" id="admin-password" placeholder="Password" value="password123">
+        <button onclick="loginAdmin()">Login</button>
+    </div>
+
+    <div id="admin-panel" class="hidden">
+        <h2>Admin Panel</h2>
+        <input type="file" id="cover-upload" accept="image/*">
+        <button onclick="uploadCover()">Upload Album Cover</button>
+
+        <h3>Upload Audio Files (Up to 7)</h3>
+        <div id="audio-uploads">
+            <!-- Dynamically generate 7 upload slots -->
+        </div>
+        <button onclick="logoutAdmin()">Logout</button>
+        <button onclick="clearData()">Clear All Data</button>
+    </div>
+
+    <script>
+        const ADMIN_EMAIL = 'admin@example.com';
+        const ADMIN_PASSWORD = 'password123';
+        const MAX_TRACKS = 7;
+
+        // Load data from localStorage
+        function loadData() {
+            const cover = localStorage.getItem('albumCover');
+            const tracks = JSON.parse(localStorage.getItem('tracks')) || [];
+
+            if (cover) {
+                document.getElementById('album-cover').src = cover;
+                document.getElementById('album-cover').classList.remove('hidden');
+            }
+
+            const trackList = document.getElementById('track-list');
+            trackList.innerHTML = '';
+            tracks.forEach((track, index) => {
+                const li = document.createElement('li');
+                li.textContent = track.name;
+                li.onclick = () => playTrack(track.dataUrl);
+                trackList.appendChild(li);
+            });
+        }
+
+        // Play a track
+        function playTrack(dataUrl) {
+            const player = document.getElementById('audio-player');
+            player.src = dataUrl;
+            player.play();
+        }
+
+        // Admin login
+        function loginAdmin() {
+            const email = document.getElementById('admin-email').value;
+            const password = document.getElementById('admin-password').value;
+            if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+                document.getElementById('admin-login').classList.add('hidden');
+                document.getElementById('admin-panel').classList.remove('hidden');
+                setupAudioUploads();
+            } else {
+                alert('Invalid credentials');
+            }
+        }
+
+        // Logout admin
+        function logoutAdmin() {
+            document.getElementById('admin-panel').classList.add('hidden');
+            document.getElementById('admin-login').classList.remove('hidden');
+        }
+
+        // Upload album cover
+        function uploadCover() {
+            const fileInput = document.getElementById('cover-upload');
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    localStorage.setItem('albumCover', e.target.result);
+                    loadData();
+                    alert('Cover uploaded!');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Setup audio upload slots
+        function setupAudioUploads() {
+            const container = document.getElementById('audio-uploads');
+            container.innerHTML = '';
+            for (let i = 0; i < MAX_TRACKS; i++) {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <label>Track ${i + 1}:</label>
+                    <input type="file" accept="audio/wav,audio/mp3" data-index="${i}">
+                    <input type="text" placeholder="Display Name" data-index="${i}">
+                    <button onclick="uploadAudio(${i})">Upload Audio</button>
+                `;
+                container.appendChild(div);
+            }
+        }
+
+        // Upload individual audio
+        function uploadAudio(index) {
+            const fileInput = document.querySelector(`input[type="file"][data-index="${index}"]`);
+            const nameInput = document.querySelector(`input[type="text"][data-index="${index}"]`);
+            const file = fileInput.files[0];
+            const name = nameInput.value.trim() || `Track ${index + 1}`;
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    let tracks = JSON.parse(localStorage.getItem('tracks')) || [];
+                    tracks[index] = { name, dataUrl: e.target.result };
+                    localStorage.setItem('tracks', JSON.stringify(tracks));
+                    loadData();
+                    alert(`Track ${index + 1} uploaded as "${name}"!`);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Clear all data
+        function clearData() {
+            localStorage.clear();
+            loadData();
+            alert('All data cleared!');
+        }
+
+        // Initial load
+        window.onload = loadData;
+    </script>
+</body>
+</html>

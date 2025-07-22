@@ -104,15 +104,19 @@
             if (cover) {
                 document.getElementById('album-cover').src = cover;
                 document.getElementById('album-cover').classList.remove('hidden');
+            } else {
+                document.getElementById('album-cover').classList.add('hidden');
             }
 
             const trackList = document.getElementById('track-list');
             trackList.innerHTML = '';
-            tracks.forEach((track, index) => {
-                const li = document.createElement('li');
-                li.textContent = track.name;
-                li.onclick = () => playTrack(track.dataUrl);
-                trackList.appendChild(li);
+            tracks.forEach(track => {
+                if (track) { // Ensure track is not null
+                    const li = document.createElement('li');
+                    li.textContent = track.name;
+                    li.onclick = () => playTrack(track.dataUrl);
+                    trackList.appendChild(li);
+                }
             });
         }
 
@@ -178,18 +182,28 @@
             const fileInput = document.querySelector(`input[type="file"][data-index="${index}"]`);
             const nameInput = document.querySelector(`input[type="text"][data-index="${index}"]`);
             const file = fileInput.files[0];
-            const name = nameInput.value.trim() || `Track ${index + 1}`;
+            const name = nameInput.value.trim();
 
-            if (file) {
+            if (file && name) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     let tracks = JSON.parse(localStorage.getItem('tracks')) || [];
-                    tracks[index] = { name, dataUrl: e.target.result };
+                    // Find existing track to replace or add new
+                    const existingIndex = tracks.findIndex(t => t.id === index);
+                    if (existingIndex > -1) {
+                        tracks[existingIndex] = { id: index, name, dataUrl: e.target.result };
+                    } else {
+                        tracks.push({ id: index, name, dataUrl: e.target.result });
+                    }
+                    // Sort tracks by id to maintain order
+                    tracks.sort((a, b) => a.id - b.id);
                     localStorage.setItem('tracks', JSON.stringify(tracks));
                     loadData();
                     alert(`Track ${index + 1} uploaded as "${name}"!`);
                 };
                 reader.readAsDataURL(file);
+            } else {
+                alert('Please select a file and enter a display name.');
             }
         }
 
